@@ -267,7 +267,7 @@ SKIP = re.compile(
 )
 
 
-def collect_driver_links(target: int = 130) -> list:
+def collect_driver_links(target: int = 150) -> list:
     seen, links = set(), []
 
     for lp in LIST_PAGES:
@@ -294,7 +294,7 @@ def collect_driver_links(target: int = 130) -> list:
 #  MAIN ENTRY POINT
 # ────────────────────────────────────────────────────────────────────────────
 
-def run_crawler(target: int = 130, out: str = "data/drivers.json"):
+def run_crawler(target: int = 150, out: str = "data/drivers.json"):
     os.makedirs("data", exist_ok=True)
 
     urls = collect_driver_links(target)
