@@ -30,7 +30,7 @@ def fetch(url: str) -> str:
 
 
 # ────────────────────────────────────────────────────────────────────────────
-#  ██████████  REGULAR EXPRESSION PATTERNS  ██████████
+#  REGULAR EXPRESSION PATTERNS
 #  All data extraction uses ONLY re — no HTML parser library.
 # ────────────────────────────────────────────────────────────────────────────
 
@@ -249,8 +249,8 @@ def parse_driver_page(url: str) -> dict:
 # Pages that contain many F1 driver links
 LIST_PAGES = [
     "https://en.wikipedia.org/wiki/List_of_Formula_One_drivers",
-    "https://en.wikipedia.org/wiki/Formula_One_drivers_who_have_competed_in_100_or_more_Grands_Prix",
-    "https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions",
+    "https://en.wikipedia.org/wiki/Formula_One_drivers_who_have_competed_in_100_or_more_Grands_Prix",   #not get used
+    "https://en.wikipedia.org/wiki/List_of_Formula_One_World_Drivers%27_Champions", #not get used
 ]
 
 # Known F1 driver substrings to help filter noise
@@ -262,7 +262,8 @@ F1_DRIVER_HINT = re.compile(
 SKIP = re.compile(
     r'(Wikipedia|Category|File|Template|Help|Special|Portal|Talk|'
     r'User|Main_Page|List_of|History_of|Season|Grand_Prix_of|'
-    r'Championship|Circuit|Constructors|Team_|engine)',
+    r'Championship|Circuit|Constructors|Team_|engine|'
+    r'Liberty|Formula_One|East|West|North|South)',
     re.IGNORECASE
 )
 
@@ -311,7 +312,7 @@ def run_crawler(target: int = 150, out: str = "data/drivers.json"):
     with open(out, "w", encoding="utf-8") as f:
         json.dump(drivers, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅  Saved {len(drivers)} drivers → {out}")
+    print(f"\nSaved {len(drivers)} drivers to {out}")
     return drivers
 
 
