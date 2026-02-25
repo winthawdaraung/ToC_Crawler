@@ -48,51 +48,33 @@ RE_PAGE_TITLE = re.compile(
     re.UNICODE
 )
 
-# RE-3  Date of birth — handles both orderings and optional day-of-week
-#       Supports: "February 28, 1985"  /  "28 February 1985"  /  "(born 7 Jan 1999)"
-# RE_DOB = re.compile(
-#     r'(?:born\b[^<]{0,30}?)'
-#     r'(?:'
-#         r'(?P<m1>January|February|March|April|May|June|July|August|'
-#             r'September|October|November|December|'
-#             r'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-#         r'\s+(?P<d1>\d{1,2}),?\s+(?P<y1>(?:19|20)\d{2})'
-#     r'|'
-#         r'(?P<d2>\d{1,2})\s+'
-#         r'(?P<m2>January|February|March|April|May|June|July|August|'
-#             r'September|October|November|December|'
-#             r'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-#         r'\s+(?P<y2>(?:19|20)\d{2})'
-#     r')',
-#     re.IGNORECASE
-# )
-# Updated RE-3: Specifically targets the text after the bday span
-
+# RE-3  Date of birth 
 RE_DOB = re.compile(
-    r'class="bday">[^<]+</span>\s*\)\s*</span>\s*([^<]+)', 
-    re.IGNORECASE
+    r'class="bday">(\d{4}-\d{2}-\d{2})<', re.IGNORECASE
 )
 
-# RE-4  Birthplace  — "in City, Country" / "in City, State, Country"
+# RE-4  Birthplace City, Country / City, State, Country
 RE_BIRTHPLACE = re.compile(
-    r'(?:born[^<]{0,60}?in\s+)'
-    r'((?:[A-ZÁÉÍÓÚ][a-záéíóú\'\-]+)(?:[\s,]+[A-ZÁÉÍÓÚ][a-záéíóú\'\-]+){0,4})',
-    re.UNICODE
+    r'class="birthplace"[^>]*>(.*?)</div>',
+    re.IGNORECASE | re.DOTALL
 )
 
 # RE-5  Nationality / country flag text  e.g. "British" "Dutch" "Monégasque"
 RE_NATIONALITY = re.compile(
-    r'(?:nationality\s*=\s*|\bNationality\b[^<]{0,10})'
-    r'\[?\[?([A-ZÀ-Ö][a-záéíóúàèìòùäëïöüñ\-]+(?:\s[A-ZÀ-Ö][a-záéíóúàèìòùäëïöüñ\-]+)?)',
-    re.IGNORECASE | re.UNICODE
+    r'Nationality.*?</td>', 
+    re.IGNORECASE | re.DOTALL
 )
 
 # RE-6  Current F1 team  e.g.  "team = [[Mercedes AMG Petronas]]"
-RE_TEAM = re.compile(
-    r'(?:team\s*=\s*(?:\{\{nowrap\|)?)\[\['
-    r'([A-Z][A-Za-z0-9\s\-&\.]+?)'
-    r'(?:\|[^\]]+)?\]\]',
-    re.IGNORECASE
+# RE_TEAM = re.compile(
+#     r'(?:team\s*=\s*(?:\{\{nowrap\|)?)\[\['
+#     r'([A-Z][A-Za-z0-9\s\-&\.]+?)'
+#     r'(?:\|[^\]]+)?\]\]',
+#     re.IGNORECASE
+# )
+RE_F1_TEAM = re.compile(
+    r'World Championship career.*?(?:team|Teams)</th><td[^>]*>(.*?)</td>',
+    re.IGNORECASE | re.DOTALL
 )
 
 # RE-7  World Championship titles  — number word or digit before "World"
@@ -107,27 +89,27 @@ RE_TITLES = re.compile(
     re.IGNORECASE
 )
 
-# RE-8  Number of race starts  e.g. "starts = 332"  or  "332 starts"
-RE_STARTS = re.compile(
-    r'(?:starts?\s*=\s*|[^\d])(\d{1,4})\s+(?:race\s+)?starts?',
+# RE-8  Number of F1 race wins
+RE_WINS = re.compile(
+    r'World Championship career</th></tr>.*?Wins.*?<td[^>]*>(\d+)</td>',
     re.IGNORECASE
 )
 
 # RE-9  Car number / racing number  e.g. "car_number = 44"
 RE_NUMBER = re.compile(
-    r'(?:car_number|racing_number|driver_number)\s*=\s*(\d{1,3})',
+    r'World Championship career</th></tr>.*?Car number.*?<td[^>]*>(\d+)</td>',
     re.IGNORECASE
 )
 
 # RE-10  Podiums  e.g. "podiums = 197"
 RE_PODIUMS = re.compile(
-    r'podiums?\s*=\s*(\d{1,3})',
+    r'World Championship career</th></tr>.*?Podiums.*?<td[^>]*>(\d+)</td>',
     re.IGNORECASE
 )
 
 # RE-11  Pole positions  e.g. "poles = 104"
 RE_POLES = re.compile(
-    r'(?:poles?|pole_positions?)\s*=\s*(\d{1,3})',
+    r'World Championship career</th></tr>.*?Pole Positions.*?<td[^>]*>(\d+)</td>',
     re.IGNORECASE
 )
 
@@ -173,16 +155,59 @@ def parse_age(dob: str) -> str:
     return str(date.today().year - int(y.group())) if y else "N/A"
 
 def parse_birthplace(text: str) -> str:
+    # m = RE_BIRTHPLACE.search(text)
+    # return clean(m.group(1).strip()) if m else "N/A"
     m = RE_BIRTHPLACE.search(text)
-    return clean(m.group(1).strip()) if m else "N/A"
+    if m:
+        # group(1) is "<a href="...">Stevenage</a>, Hertfordshire, England"
+        raw_html = m.group(1)
+        # Use your clean function to strip the <a> tags
+        return clean(raw_html)
+    return "N/A"
+
+# def parse_nationality(text: str) -> str:
+#     m = RE_NATIONALITY.search(text)
+#     return m.group(1).strip() if m else "N/A"
 
 def parse_nationality(text: str) -> str:
+    # 1. Find the specific <td> block for Nationality
     m = RE_NATIONALITY.search(text)
-    return m.group(1).strip().title() if m else "N/A"
+    if not m:
+        return "N/A"
+    
+    nationality_cell = m.group(0)
+    
+    # 2. Find all text between <a>...</a> tags in this cell
+    # links= ['United Kingdom', 'British'] for Hamilton
+    links = re.findall(r'<a[^>]*>([^<]+)</a>', nationality_cell)
+    
+    if links:
+        result = links[-1].strip()
+        return result
+        
+    return "N/A"
 
-def parse_team(infobox: str) -> str:
-    m = RE_TEAM.search(infobox)
-    return m.group(1).strip() if m else "N/A"
+# def parse_team(infobox: str) -> str:
+#     m = RE_TEAM.search(infobox)
+#     return m.group(1).strip() if m else "N/A"
+def parse_team(text: str) -> str:
+    # 1. Search for the team cell after the F1 header
+    m = RE_F1_TEAM.search(text)
+    if not m:
+        return "N/A"
+    
+    # This is the HTML inside the <td>...</td>
+    team_cell_content = m.group(1)
+
+    # 2. Find all text inside <a> links in this specific cell
+    # Regex: r'<a[^>]*>([^<]+)</a>'
+    teams = re.findall(r'<a[^>]*>([^<]+)</a>', team_cell_content)
+    
+    if teams:
+        # Return the last one (Mercedes for Schumacher, Ferrari for Hamilton)
+        return teams[-1].strip()
+        
+    return "N/A"
 
 def parse_titles(text: str) -> str:
     word_map = {"one":1,"two":2,"three":3,"four":4,"five":5,
@@ -196,12 +221,12 @@ def parse_titles(text: str) -> str:
         return str(word_map.get(m.group("word").lower(), 1))
     return "1"   # matched but no number prefix → 1 title
 
-def parse_starts(text: str) -> str:
-    m = RE_STARTS.search(text)
+def parse_wins(text: str) -> str:
+    m = RE_WINS.search(text)
     return m.group(1) if m else "N/A"
 
-def parse_number(infobox: str) -> str:
-    m = RE_NUMBER.search(infobox)
+def parse_number(text: str) -> str:
+    m = RE_NUMBER.search(text)
     return m.group(1) if m else "N/A"
 
 def parse_podiums(infobox: str) -> str:
@@ -250,14 +275,14 @@ def parse_driver_page(url: str) -> dict:
         "last_name":   last,
         "dob":         dob,
         "age":         parse_age(dob),
-        "birthplace":  parse_birthplace(infobox_text + " " + page_text[:3000]),
-        "nationality": parse_nationality(infobox_text),
+        "birthplace":  parse_birthplace(infobox_html),
+        "nationality": parse_nationality(infobox_html),
         "team":        parse_team(infobox_html),
         "titles":      parse_titles(page_text),
-        "starts":      parse_starts(infobox_text),
-        "podiums":     parse_podiums(infobox_text),
-        "poles":       parse_poles(infobox_text),
-        "number":      parse_number(infobox_text),
+        "wins":        parse_wins(infobox_html),
+        "podiums":     parse_podiums(infobox_html),
+        "poles":       parse_poles(infobox_html),
+        "number":      parse_number(infobox_html),
         "wiki_url":    url,
     }
 
