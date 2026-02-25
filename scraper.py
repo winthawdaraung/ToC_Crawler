@@ -12,6 +12,7 @@ import urllib.request
 import json
 import time
 import os
+from datetime import date
 
 # ────────────────────────────────────────────────────────────────────────────
 #  HTTP helper
@@ -49,20 +50,26 @@ RE_PAGE_TITLE = re.compile(
 
 # RE-3  Date of birth — handles both orderings and optional day-of-week
 #       Supports: "February 28, 1985"  /  "28 February 1985"  /  "(born 7 Jan 1999)"
+# RE_DOB = re.compile(
+#     r'(?:born\b[^<]{0,30}?)'
+#     r'(?:'
+#         r'(?P<m1>January|February|March|April|May|June|July|August|'
+#             r'September|October|November|December|'
+#             r'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
+#         r'\s+(?P<d1>\d{1,2}),?\s+(?P<y1>(?:19|20)\d{2})'
+#     r'|'
+#         r'(?P<d2>\d{1,2})\s+'
+#         r'(?P<m2>January|February|March|April|May|June|July|August|'
+#             r'September|October|November|December|'
+#             r'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
+#         r'\s+(?P<y2>(?:19|20)\d{2})'
+#     r')',
+#     re.IGNORECASE
+# )
+# Updated RE-3: Specifically targets the text after the bday span
+
 RE_DOB = re.compile(
-    r'(?:born\b[^<]{0,30}?)'
-    r'(?:'
-        r'(?P<m1>January|February|March|April|May|June|July|August|'
-            r'September|October|November|December|'
-            r'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-        r'\s+(?P<d1>\d{1,2}),?\s+(?P<y1>(?:19|20)\d{2})'
-    r'|'
-        r'(?P<d2>\d{1,2})\s+'
-        r'(?P<m2>January|February|March|April|May|June|July|August|'
-            r'September|October|November|December|'
-            r'Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-        r'\s+(?P<y2>(?:19|20)\d{2})'
-    r')',
+    r'class="bday">[^<]+</span>\s*\)\s*</span>\s*([^<]+)', 
     re.IGNORECASE
 )
 
@@ -142,17 +149,28 @@ def clean(text: str) -> str:
 #  PARSERS  — each uses RE results above
 # ────────────────────────────────────────────────────────────────────────────
 
+# def parse_dob(text: str) -> str:
+#     m = RE_DOB.search(text)
+#     if not m:
+#         return "N/A"
+#     if m.group("m1"):
+#         return f"{m.group('m1')} {m.group('d1')}, {m.group('y1')}"
+#     return f"{m.group('d2')} {m.group('m2')} {m.group('y2')}"
+
 def parse_dob(text: str) -> str:
+    """Extracts human-readable DOB (e.g., 29 July 1981) from raw HTML"""
     m = RE_DOB.search(text)
-    if not m:
-        return "N/A"
-    if m.group("m1"):
-        return f"{m.group('m1')} {m.group('d1')}, {m.group('y1')}"
-    return f"{m.group('d2')} {m.group('m2')} {m.group('y2')}"
+    if m:
+        # group(1) captures the text after the span tags but before the next '<'
+        return m.group(1).strip()
+    
+    # Fallback: if the bday span isn't there, look for any 'Day Month Year' pattern
+    fallback = re.search(r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})', text, re.IGNORECASE)
+    return fallback.group(1) if fallback else "N/A"
 
 def parse_age(dob: str) -> str:
     y = re.search(r'(?:19|20)\d{2}', dob)
-    return str(2025 - int(y.group())) if y else "N/A"
+    return str(date.today().year - int(y.group())) if y else "N/A"
 
 def parse_birthplace(text: str) -> str:
     m = RE_BIRTHPLACE.search(text)
@@ -214,6 +232,7 @@ def parse_driver_page(url: str) -> dict:
 
     # Full page plain text (first 12 000 chars)
     page_text = clean(html[:12000])
+    # print(infobox_html)
 
     name_m = RE_PAGE_TITLE.search(html)
     full_name = name_m.group(1).strip() if name_m else url.split("/wiki/")[-1].replace("_", " ")
@@ -222,7 +241,8 @@ def parse_driver_page(url: str) -> dict:
     first = parts[0] if parts else full_name
     last  = " ".join(parts[1:]) if len(parts) > 1 else ""
 
-    dob = parse_dob(infobox_text + " " + page_text[:3000])
+    # dob = parse_dob(infobox_text + " " + page_text[:3000])
+    dob = parse_dob(infobox_html)  # target the bday span area more specifically
 
     return {
         "name":        full_name,
@@ -268,7 +288,7 @@ SKIP = re.compile(
 )
 
 
-def collect_driver_links(target: int = 150) -> list:
+def collect_driver_links(target: int = 10) -> list:
     seen, links = set(), []
 
     for lp in LIST_PAGES:
@@ -295,7 +315,7 @@ def collect_driver_links(target: int = 150) -> list:
 #  MAIN ENTRY POINT
 # ────────────────────────────────────────────────────────────────────────────
 
-def run_crawler(target: int = 150, out: str = "data/drivers.json"):
+def run_crawler(target: int = 10, out: str = "data/drivers.json"):
     os.makedirs("data", exist_ok=True)
 
     urls = collect_driver_links(target)
@@ -307,6 +327,7 @@ def run_crawler(target: int = 150, out: str = "data/drivers.json"):
         d = parse_driver_page(url)
         if d and d.get("name") and len(d["name"]) > 3:
             drivers.append(d)
+        print(d)
         time.sleep(0.5)   # polite crawl delay
 
     with open(out, "w", encoding="utf-8") as f:
