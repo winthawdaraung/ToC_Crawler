@@ -55,7 +55,8 @@ RE_DOB = re.compile(
 
 # RE-4  Birthplace City, Country / City, State, Country
 RE_BIRTHPLACE = re.compile(
-    r'class="birthplace"[^>]*>(.*?)</div>',
+    # r'class="birthplace"[^>]*>(.*?)</div>',
+    r'class="birthplace"[^>]*>(.*?)<\/span>',
     re.IGNORECASE | re.DOTALL
 )
 
@@ -77,15 +78,10 @@ RE_F1_TEAM = re.compile(
     re.IGNORECASE | re.DOTALL
 )
 
-# RE-7  World Championship titles  — number word or digit before "World"
-#       e.g. "seven-time World Champion" / "3× World Drivers' Champion"
+# RE-7  World Championship titles  
 RE_TITLES = re.compile(
-    r'(?:'
-        r'(?P<num>\d+)[×xX\-\s]?'
-        r'|(?P<word>one|two|three|four|five|six|seven|eight|nine|ten)'
-        r'[\s\-]?(?:time[\s\-])? '
-    r')?'
-    r"World\s+(?:Drivers['\u2019]?\s+)?Champio",
+    # r'Championships.*?\d+|(\d+|\w+) (?:times )?Champion(?:s)?',
+    r'World Championship career</th></tr>.*?Championships.*?<td[^>]*>(\d+)',
     re.IGNORECASE
 )
 
@@ -172,6 +168,7 @@ def parse_birthplace(text: str) -> str:
 def parse_nationality(text: str) -> str:
     # 1. Find the specific <td> block for Nationality
     m = RE_NATIONALITY.search(text)
+    # print(m.group(0))
     if not m:
         return "N/A"
     
@@ -179,7 +176,8 @@ def parse_nationality(text: str) -> str:
     
     # 2. Find all text between <a>...</a> tags in this cell
     # links= ['United Kingdom', 'British'] for Hamilton
-    links = re.findall(r'<a[^>]*>([^<]+)</a>', nationality_cell)
+    # links = re.findall(r'<a[^>]*>([^<]+)</a>', nationality_cell)
+    links = re.findall(r'<img.*>\s*([a-zA-Z]+)<.*\/td>', nationality_cell)
     
     if links:
         result = links[-1].strip()
@@ -209,17 +207,10 @@ def parse_team(text: str) -> str:
         
     return "N/A"
 
-def parse_titles(text: str) -> str:
-    word_map = {"one":1,"two":2,"three":3,"four":4,"five":5,
-                "six":6,"seven":7,"eight":8,"nine":9,"ten":10}
-    m = RE_TITLES.search(text)
-    if not m:
-        return "0"
-    if m.group("num"):
-        return m.group("num")
-    if m.group("word"):
-        return str(word_map.get(m.group("word").lower(), 1))
-    return "1"   # matched but no number prefix → 1 title
+def parse_titles(infobox_html: str) -> str:
+    m = RE_TITLES.search(infobox_html)
+    # print(m.group(1))
+    return m.group(1) if m else "N/A"
 
 def parse_wins(text: str) -> str:
     m = RE_WINS.search(text)
@@ -254,9 +245,10 @@ def parse_driver_page(url: str) -> dict:
     )
     infobox_html = ib_m.group(0) if ib_m else html[:8000]
     infobox_text = clean(infobox_html)
+    # print(infobox_text)
 
-    # Full page plain text (first 12 000 chars)
-    page_text = clean(html[:12000])
+    # # Full page plain text (first 12 000 chars)
+    # page_text = clean(html[:12000])
     # print(infobox_html)
 
     name_m = RE_PAGE_TITLE.search(html)
@@ -278,7 +270,7 @@ def parse_driver_page(url: str) -> dict:
         "birthplace":  parse_birthplace(infobox_html),
         "nationality": parse_nationality(infobox_html),
         "team":        parse_team(infobox_html),
-        "titles":      parse_titles(page_text),
+        "titles":      parse_titles(infobox_html),
         "wins":        parse_wins(infobox_html),
         "podiums":     parse_podiums(infobox_html),
         "poles":       parse_poles(infobox_html),
@@ -313,7 +305,7 @@ SKIP = re.compile(
 )
 
 
-def collect_driver_links(target: int = 10) -> list:
+def collect_driver_links(target: int = 75) -> list:
     seen, links = set(), []
 
     for lp in LIST_PAGES:
@@ -340,7 +332,7 @@ def collect_driver_links(target: int = 10) -> list:
 #  MAIN ENTRY POINT
 # ────────────────────────────────────────────────────────────────────────────
 
-def run_crawler(target: int = 10, out: str = "data/drivers.json"):
+def run_crawler(target: int = 75, out: str = "data/drivers.json"):
     os.makedirs("data", exist_ok=True)
 
     urls = collect_driver_links(target)
@@ -352,7 +344,7 @@ def run_crawler(target: int = 10, out: str = "data/drivers.json"):
         d = parse_driver_page(url)
         if d and d.get("name") and len(d["name"]) > 3:
             drivers.append(d)
-        print(d)
+        # print(d)
         time.sleep(0.5)   # polite crawl delay
 
     with open(out, "w", encoding="utf-8") as f:
