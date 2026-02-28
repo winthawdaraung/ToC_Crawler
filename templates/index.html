@@ -101,7 +101,7 @@
           <td class="td-muted">{{ d.birthplace }}</td>
           <td class="td-team">{{ d.team }}</td>
           <td class="col-center">
-            {% if d.titles and d.titles != '0' %}
+            {% if d.titles and d.titles != '0' and d.titles != 'N/A'%}
             <span class="champ-badge">{{ d.titles }}</span>
             {% else %}—{% endif %}
           </td>

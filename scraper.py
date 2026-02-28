@@ -14,9 +14,7 @@ import time
 import os
 from datetime import date
 
-# ────────────────────────────────────────────────────────────────────────────
 #  HTTP helper
-# ────────────────────────────────────────────────────────────────────────────
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (F1CrawlerBot/1.0; educational project)"}
 
@@ -29,11 +27,7 @@ def fetch(url: str) -> str:
         print(f"  [WARN] {url}: {e}")
         return ""
 
-
-# ────────────────────────────────────────────────────────────────────────────
 #  REGULAR EXPRESSION PATTERNS
-#  All data extraction uses ONLY re — no HTML parser library.
-# ────────────────────────────────────────────────────────────────────────────
 
 # RE-1  Extract driver wiki links from list / championship pages
 #       Matches  href="/wiki/FirstName_LastName"  with a human-name guard
@@ -55,7 +49,6 @@ RE_DOB = re.compile(
 
 # RE-4  Birthplace City, Country / City, State, Country
 RE_BIRTHPLACE = re.compile(
-    # r'class="birthplace"[^>]*>(.*?)</div>',
     r'class="birthplace"[^>]*>(.*?)<\/span>',
     re.IGNORECASE | re.DOTALL
 )
@@ -67,12 +60,6 @@ RE_NATIONALITY = re.compile(
 )
 
 # RE-6  Current F1 team  e.g.  "team = [[Mercedes AMG Petronas]]"
-# RE_TEAM = re.compile(
-#     r'(?:team\s*=\s*(?:\{\{nowrap\|)?)\[\['
-#     r'([A-Z][A-Za-z0-9\s\-&\.]+?)'
-#     r'(?:\|[^\]]+)?\]\]',
-#     re.IGNORECASE
-# )
 RE_F1_TEAM = re.compile(
     r'World Championship career.*?(?:team|Teams)</th><td[^>]*>(.*?)</td>',
     re.IGNORECASE | re.DOTALL
@@ -80,7 +67,6 @@ RE_F1_TEAM = re.compile(
 
 # RE-7  World Championship titles  
 RE_TITLES = re.compile(
-    # r'Championships.*?\d+|(\d+|\w+) (?:times )?Champion(?:s)?',
     r'World Championship career</th></tr>.*?Championships.*?<td[^>]*>(\d+)',
     re.IGNORECASE
 )
@@ -109,9 +95,7 @@ RE_POLES = re.compile(
     re.IGNORECASE
 )
 
-# ────────────────────────────────────────────────────────────────────────────
 #  UTILITY  —  strip HTML tags & decode entities
-# ────────────────────────────────────────────────────────────────────────────
 
 def clean(text: str) -> str:
     text = re.sub(r'<[^>]+>', ' ', text)
@@ -123,17 +107,7 @@ def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 
-# ────────────────────────────────────────────────────────────────────────────
 #  PARSERS  — each uses RE results above
-# ────────────────────────────────────────────────────────────────────────────
-
-# def parse_dob(text: str) -> str:
-#     m = RE_DOB.search(text)
-#     if not m:
-#         return "N/A"
-#     if m.group("m1"):
-#         return f"{m.group('m1')} {m.group('d1')}, {m.group('y1')}"
-#     return f"{m.group('d2')} {m.group('m2')} {m.group('y2')}"
 
 def parse_dob(text: str) -> str:
     """Extracts human-readable DOB (e.g., 29 July 1981) from raw HTML"""
@@ -151,8 +125,6 @@ def parse_age(dob: str) -> str:
     return str(date.today().year - int(y.group())) if y else "N/A"
 
 def parse_birthplace(text: str) -> str:
-    # m = RE_BIRTHPLACE.search(text)
-    # return clean(m.group(1).strip()) if m else "N/A"
     m = RE_BIRTHPLACE.search(text)
     if m:
         # group(1) is "<a href="...">Stevenage</a>, Hertfordshire, England"
@@ -161,12 +133,7 @@ def parse_birthplace(text: str) -> str:
         return clean(raw_html)
     return "N/A"
 
-# def parse_nationality(text: str) -> str:
-#     m = RE_NATIONALITY.search(text)
-#     return m.group(1).strip() if m else "N/A"
-
 def parse_nationality(text: str) -> str:
-    # 1. Find the specific <td> block for Nationality
     m = RE_NATIONALITY.search(text)
     # print(m.group(0))
     if not m:
@@ -174,9 +141,6 @@ def parse_nationality(text: str) -> str:
     
     nationality_cell = m.group(0)
     
-    # 2. Find all text between <a>...</a> tags in this cell
-    # links= ['United Kingdom', 'British'] for Hamilton
-    # links = re.findall(r'<a[^>]*>([^<]+)</a>', nationality_cell)
     links = re.findall(r'<img.*>\s*([a-zA-Z]+)<.*\/td>', nationality_cell)
     
     if links:
@@ -185,9 +149,6 @@ def parse_nationality(text: str) -> str:
         
     return "N/A"
 
-# def parse_team(infobox: str) -> str:
-#     m = RE_TEAM.search(infobox)
-#     return m.group(1).strip() if m else "N/A"
 def parse_team(text: str) -> str:
     # 1. Search for the team cell after the F1 header
     m = RE_F1_TEAM.search(text)
@@ -209,7 +170,6 @@ def parse_team(text: str) -> str:
 
 def parse_titles(infobox_html: str) -> str:
     m = RE_TITLES.search(infobox_html)
-    # print(m.group(1))
     return m.group(1) if m else "N/A"
 
 def parse_wins(text: str) -> str:
@@ -229,9 +189,7 @@ def parse_poles(infobox: str) -> str:
     return m.group(1) if m else "N/A"
 
 
-# ────────────────────────────────────────────────────────────────────────────
 #  SCRAPE A SINGLE DRIVER PAGE
-# ────────────────────────────────────────────────────────────────────────────
 
 def parse_driver_page(url: str) -> dict:
     html = fetch(url)
@@ -240,16 +198,16 @@ def parse_driver_page(url: str) -> dict:
 
     # Extract infobox block for targeted regex
     ib_m = re.search(
-        r'<table[^>]*class="[^"]*infobox[^"]*".*?</table>',
+        r'<table[^>]*class="[^"]*infobox[^"]*".*?(?:</table>).*?</table>',
+        html, re.DOTALL | re.IGNORECASE
+    )
+    ib_stats = re.search(
+        r'<table[^>]*class="[^"]*infobox[^"]*".*?World Championship career.*?(?:</table>).*?</table>',
         html, re.DOTALL | re.IGNORECASE
     )
     infobox_html = ib_m.group(0) if ib_m else html[:8000]
-    infobox_text = clean(infobox_html)
-    # print(infobox_text)
-
-    # # Full page plain text (first 12 000 chars)
-    # page_text = clean(html[:12000])
-    # print(infobox_html)
+    statbox_html = ib_stats.group(0) if ib_stats else html[:8000]
+    
 
     name_m = RE_PAGE_TITLE.search(html)
     full_name = name_m.group(1).strip() if name_m else url.split("/wiki/")[-1].replace("_", " ")
@@ -270,10 +228,10 @@ def parse_driver_page(url: str) -> dict:
         "birthplace":  parse_birthplace(infobox_html),
         "nationality": parse_nationality(infobox_html),
         "team":        parse_team(infobox_html),
-        "titles":      parse_titles(infobox_html),
-        "wins":        parse_wins(infobox_html),
-        "podiums":     parse_podiums(infobox_html),
-        "poles":       parse_poles(infobox_html),
+        "titles":      parse_titles(statbox_html),
+        "wins":        parse_wins(statbox_html),
+        "podiums":     parse_podiums(statbox_html),
+        "poles":       parse_poles(statbox_html),
         "number":      parse_number(infobox_html),
         "wiki_url":    url,
     }
@@ -305,7 +263,7 @@ SKIP = re.compile(
 )
 
 
-def collect_driver_links(target: int = 75) -> list:
+def collect_driver_links(target: int = 150) -> list:
     seen, links = set(), []
 
     for lp in LIST_PAGES:
@@ -332,7 +290,7 @@ def collect_driver_links(target: int = 75) -> list:
 #  MAIN ENTRY POINT
 # ────────────────────────────────────────────────────────────────────────────
 
-def run_crawler(target: int = 75, out: str = "data/drivers.json"):
+def run_crawler(target: int = 150, out: str = "data/drivers.json"):
     os.makedirs("data", exist_ok=True)
 
     urls = collect_driver_links(target)
