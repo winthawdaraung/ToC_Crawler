@@ -73,27 +73,29 @@ RE_TITLES = re.compile(
 
 # RE-8  Number of F1 race wins
 RE_WINS = re.compile(
-    r'World Championship career</th></tr>.*?Wins.*?<td[^>]*>(\d+)</td>',
+    r'World Championship career</th></tr>.*?Wins.*?<td[^>]*>(\d+)',
     re.IGNORECASE
 )
 
 # RE-9  Car number / racing number  e.g. "car_number = 44"
 RE_NUMBER = re.compile(
-    r'World Championship career</th></tr>.*?Car number.*?<td[^>]*>(\d+)</td>',
+    r'World Championship career</th></tr>.*?Car number.*?<td[^>]*>(\d+)',
     re.IGNORECASE
 )
 
 # RE-10  Podiums  e.g. "podiums = 197"
 RE_PODIUMS = re.compile(
-    r'World Championship career</th></tr>.*?Podiums.*?<td[^>]*>(\d+)</td>',
+    r'World Championship career</th></tr>.*?Podiums.*?<td[^>]*>(\d+)',
     re.IGNORECASE
 )
 
 # RE-11  Pole positions  e.g. "poles = 104"
 RE_POLES = re.compile(
-    r'World Championship career</th></tr>.*?Pole Positions.*?<td[^>]*>(\d+)</td>',
+    r'World Championship career</th></tr>.*?Pole Positions.*?<td[^>]*>(\d+)',
     re.IGNORECASE
 )
+
+
 
 #  UTILITY  —  strip HTML tags & decode entities
 
