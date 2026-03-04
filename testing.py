@@ -52,23 +52,28 @@ def fetch(url: str) -> str:
 # print(parse_poles(ib_stats.group(0)))
 
 
-url = 'https://en.wikipedia.org/wiki/Lewis_Hamilton'
+# url = 'https://en.wikipedia.org/wiki/Lewis_Hamilton'
 
+# html = fetch(url)
+
+
+
+# def parse_number(text: str) -> str:
+#     m = RE_NUMBER.search(text)
+#     return m.group(1) if m else "N/A"
+
+# RE_NUMBER = re.compile(
+#     r'World Championship career</th></tr>.*?Car number.*?<td[^>]*>(\d+)</td>',
+#     re.IGNORECASE
+# )
+# ib_stats = re.search(
+#         r'<table[^>]*class="[^"]*infobox[^"]*".*?World Championship career.*?(?:(?:</table>).*?</table>|</table>)',
+#         html, re.DOTALL | re.IGNORECASE
+#     )
+# print(ib_stats.group(0))
+# # print(parse_number(ib_stats.group(0)))
+
+url = 'https://en.wikipedia.org/wiki/Alex_Albon'
 html = fetch(url)
 
-
-
-def parse_number(text: str) -> str:
-    m = RE_NUMBER.search(text)
-    return m.group(1) if m else "N/A"
-
-RE_NUMBER = re.compile(
-    r'World Championship career</th></tr>.*?Car number.*?<td[^>]*>(\d+)</td>',
-    re.IGNORECASE
-)
-ib_stats = re.search(
-        r'<table[^>]*class="[^"]*infobox[^"]*".*?World Championship career.*?(?:(?:</table>).*?</table>|</table>)',
-        html, re.DOTALL | re.IGNORECASE
-    )
-print(ib_stats.group(0))
-# print(parse_number(ib_stats.group(0)))
+table

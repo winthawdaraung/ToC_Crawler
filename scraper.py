@@ -29,6 +29,9 @@ def fetch(url: str) -> str:
 
 #  REGULAR EXPRESSION PATTERNS
 
+# RE-0  Extract table from list / championship pages
+RE_TABLE = re.compile(r'<table class="wikitable sortable sticky-header[^"]*"[^>]*>(.*?)</table>', re.DOTALL)
+
 # RE-1  Extract driver wiki links from list / championship pages
 #       Matches  href="/wiki/FirstName_LastName"  with a human-name guard
 RE_DRIVER_LINK = re.compile(
@@ -96,7 +99,6 @@ RE_POLES = re.compile(
 )
 
 
-
 #  UTILITY  —  strip HTML tags & decode entities
 
 def clean(text: str) -> str:
@@ -156,7 +158,6 @@ def parse_team(text: str) -> str:
     m = RE_F1_TEAM.search(text)
     if not m:
         return "N/A"
-    
     # This is the HTML inside the <td>...</td>
     team_cell_content = m.group(1)
 
@@ -165,8 +166,7 @@ def parse_team(text: str) -> str:
     teams = re.findall(r'<a[^>]*>([^<]+)</a>', team_cell_content)
     
     if teams:
-        # Return the last one (Mercedes for Schumacher, Ferrari for Hamilton)
-        return teams[-1].strip()
+        return teams[0]
         
     return "N/A"
 
@@ -221,6 +221,28 @@ def parse_driver_page(url: str) -> dict:
     # dob = parse_dob(infobox_text + " " + page_text[:3000])
     dob = parse_dob(infobox_html)  # target the bday span area more specifically
 
+    fallback_data = fallback_data_from_list()
+    for driver in fallback_data:
+        if driver['Driver name'].lower() == full_name.lower():
+            data = driver
+            break
+    nationality = parse_nationality(infobox_html)
+    if nationality == "N/A":
+        nationality = data['Nationality']
+    team = parse_team(infobox_html)
+    titles = parse_titles(statbox_html)
+    if titles == "N/A":
+        titles = data['Drivers\' Championships']
+    wins = parse_wins(statbox_html)
+    if wins == "N/A":
+        wins = data['Race wins']
+    podiums = parse_podiums(statbox_html)
+    if podiums == "N/A":
+        podiums = data['Podiums']
+    poles = parse_poles(statbox_html)
+    if poles == "N/A":
+        poles = data['Pole positions']
+    number = parse_number(infobox_html)
     return {
         "name":        full_name,
         "first_name":  first,
@@ -228,13 +250,13 @@ def parse_driver_page(url: str) -> dict:
         "dob":         dob,
         "age":         parse_age(dob),
         "birthplace":  parse_birthplace(infobox_html),
-        "nationality": parse_nationality(infobox_html),
-        "team":        parse_team(infobox_html),
-        "titles":      parse_titles(statbox_html),
-        "wins":        parse_wins(statbox_html),
-        "podiums":     parse_podiums(statbox_html),
-        "poles":       parse_poles(statbox_html),
-        "number":      parse_number(infobox_html),
+        "nationality": nationality,
+        "team":        team,
+        "titles":      titles,
+        "wins":        wins,
+        "podiums":     podiums,
+        "poles":       poles,
+        "number":      number,
         "wiki_url":    url,
     }
 
@@ -259,8 +281,7 @@ F1_DRIVER_HINT = re.compile(
 SKIP = re.compile(
     r'(Wikipedia|Category|File|Template|Help|Special|Portal|Talk|'
     r'User|Main_Page|List_of|History_of|Season|Grand_Prix_of|'
-    r'Championship|Circuit|Constructors|Team_|engine|'
-    r'Liberty|Formula_One|East|West|North|South)',
+    r'Championship|Circuit|Constructors|Team_|engine| North | South | East | West)',
     re.IGNORECASE
 )
 
@@ -271,10 +292,9 @@ def collect_driver_links(target: int = 150) -> list:
     for lp in LIST_PAGES:
         if len(links) >= target:
             break
-        print(f"Scanning list page: {lp}")
         html = fetch(lp)
-
-        for m in RE_DRIVER_LINK.finditer(html):
+        table = RE_TABLE.search(html).group(1) if RE_TABLE.search(html) else html
+        for m in RE_DRIVER_LINK.finditer(table):
             path = m.group(1)
             if SKIP.search(path):
                 continue
@@ -287,7 +307,26 @@ def collect_driver_links(target: int = 150) -> list:
 
     return links[:target]
 
-
+def fallback_data_from_list() -> list:
+    data = []
+    html = fetch(LIST_PAGES[0])
+    
+    def clean_text(text: str) -> str:
+        text = re.sub(r'<[^>]+>', '', text).strip()
+        text = re.sub(r'a?&[#0-9]+;', '', text)
+        return text
+    table = RE_TABLE.search(html).group(1) if RE_TABLE.search(html) else html
+    rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table, re.DOTALL)
+    header = re.findall(r'<th[^>]*>(.*?)</th>', rows[0], re.DOTALL)
+    header = [clean_text(cell) for cell in header]
+    for row in rows[1:]:
+        cells = re.findall(r'<td[^>]*>(.*?)</td>', row, re.DOTALL)
+        cells = [clean_text(cell) for cell in cells]
+        if len(cells) == len(header):
+            driver = dict(zip(header, cells))
+            data.append(driver)
+    return data
+    
 # ────────────────────────────────────────────────────────────────────────────
 #  MAIN ENTRY POINT
 # ────────────────────────────────────────────────────────────────────────────
@@ -298,11 +337,13 @@ def run_crawler(target: int = 150, out: str = "data/drivers.json"):
     urls = collect_driver_links(target)
     print(f"\nFound {len(urls)} candidate driver pages. Scraping…\n")
 
+
     drivers = []
     for i, url in enumerate(urls, 1):
         print(f"  [{i:>3}/{len(urls)}] {url.split('/wiki/')[-1].replace('_',' ')}")
         d = parse_driver_page(url)
         if d and d.get("name") and len(d["name"]) > 3:
+
             drivers.append(d)
         # print(d)
         time.sleep(0.5)   # polite crawl delay
