@@ -111,7 +111,7 @@ def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 
-#  PARSERS  — each uses RE results above
+#  PARSERS-each uses RE results above
 
 def parse_dob(text: str) -> str:
     """Extracts human-readable DOB (e.g., 29 July 1981) from raw HTML"""

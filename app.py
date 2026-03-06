@@ -1,5 +1,5 @@
 """
-app.py  ─  Flask web application for the F1 Driver Crawler
+app.py - Flask web application for the F1 Driver Crawler
 Run locally:   python app.py
 Production:    gunicorn app:app
 """
