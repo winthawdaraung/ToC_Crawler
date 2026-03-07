@@ -25,19 +25,22 @@
 INPUT                    PROCESS                  OUTPUT
 ─────────────────────────────────────────────────────────
 Wikipedia List Pages  →  Python RE scraper    →  drivers.json
-(3 pages)                (11 regex patterns)
+(3 pages)                (12 regex patterns:       (150 drivers)
+                          RE-0 through RE-11)
                       →  Flask web app        →  Live website
                       →  Vanilla JS filter    →  REST API
 ```
 
 **Say:**
 > "The project has three layers:
-> 1. A scraper that crawls Wikipedia for 130+ F1 drivers
+> 1. A scraper that crawls Wikipedia for 150+ F1 drivers
 > 2. A Flask backend that serves the data
 > 3. A frontend with live search and filtering
 >
 > The key constraint: NO BeautifulSoup, NO Scrapy —
-> all data extraction is done purely with regular expressions."
+> all data extraction is done purely with regular expressions.
+> The scraper defines 12 compiled regex patterns, RE-0 through RE-11,
+> each responsible for extracting a specific piece of driver data."
 
 ---
 
@@ -46,7 +49,7 @@ Wikipedia List Pages  →  Python RE scraper    →  drivers.json
 **Show on screen (open VS Code):**
 ```
 ToC_Crawler/
-├── scraper.py          ← core crawler (11 regex patterns)
+├── scraper.py          ← core crawler (12 regex patterns: RE-0 to RE-11)
 ├── app.py              ← Flask routes + API
 ├── data/drivers.json   ← generated output
 ├── templates/
@@ -66,10 +69,59 @@ ToC_Crawler/
 
 ---
 
-## SLIDE 4 — RE-1: Driver Link Extraction (2:00–3:30)
+## SLIDE 4 — RE-0: Table Extraction (2:00–2:30)
+
+**Show on screen (scraper.py):**
+```python
+# RE-0  Extract table from list / championship pages
+RE_TABLE = re.compile(
+    r'<table class="wikitable sortable sticky-header[^"]*"[^>]*>(.*?)</table>',
+    re.DOTALL
+)
+```
+
+**Explain each part on screen:**
+```
+<table                          ← match opening table tag
+  class="wikitable sortable     ← Wikipedia's standard data table classes
+  sticky-header                 ← the specific class on F1 driver list tables
+  [^"]*"                        ← allow any extra classes after (e.g. "jquery-tablesorter")
+  [^>]*>                        ← skip any other attributes on the tag
+  (.*?)                         ← CAPTURE the entire table contents (lazy)
+</table>                        ← stop at closing tag
+
+re.DOTALL                       ← makes . match newlines (table spans many lines)
+```
+
+**Usage in code:**
+```python
+# In collect_driver_links():
+table = RE_TABLE.search(html).group(1) if RE_TABLE.search(html) else html
+
+# In fallback_data_from_list():
+table = RE_TABLE.search(html).group(1) if RE_TABLE.search(html) else html
+```
+
+**Say:**
+> "RE-0 is the entry point of the entire scraper.
+> Before we can find any driver links, we first need to isolate
+> the correct HTML table from the Wikipedia list page —
+> because each page contains many tables: navigation, sidebars, footers.
+>
+> The pattern targets the exact CSS classes Wikipedia uses
+> for its sortable data tables: 'wikitable sortable sticky-header'.
+> The `[^"]*` part is important — it allows for extra dynamically
+> added classes like 'jquery-tablesorter' without breaking the match.
+>
+> re.DOTALL is essential here because the table spans hundreds
+> of HTML lines, and without it the dot would not match newlines."
+
+---
+
+## SLIDE 5 — RE-1: Driver Link Extraction (2:30–4:00)
 ### MOST IMPORTANT — Show this in detail
 
-**Show on screen (scraper.py lines ~30–35):**
+**Show on screen (scraper.py):**
 ```python
 RE_DRIVER_LINK = re.compile(
     r'href="(/wiki/([A-Z][a-záéíóúàèìòùäëïöüñ\'\-]+'
@@ -94,7 +146,7 @@ href="(                     ← literal href attribute opening
 ```
 
 **Say:**
-> "RE-1 is responsible for finding driver links from Wikipedia list pages.
+> "RE-1 is responsible for finding driver links from the extracted table.
 > What makes it complex:
 > - It enforces Title Case — each word starts with uppercase
 > - It supports international characters like á, é, ü for drivers like
@@ -167,37 +219,45 @@ RE_NATIONALITY = re.compile(
 
 ---
 
-## SLIDE 7 — RE-6 to RE-11: Career Stats (5:15–6:00)
+## SLIDE 7 — RE-6 to RE-11: Career Stats + SKIP & F1_DRIVER_HINT (5:15–6:00)
 
 **Show on screen:**
 ```python
-# All stats follow the same anchor pattern:
-# "World Championship career" → find the stat → capture digits
+# RE-6: Current team — anchors on "World Championship career" header
+RE_F1_TEAM = re.compile(
+    r'World Championship career.*?(?:team|Teams)</th><td[^>]*>(.*?)</td>',
+    re.IGNORECASE | re.DOTALL
+)
 
-RE_TITLES = re.compile(
-    r'World Championship career</th></tr>.*?Championships.*?<td[^>]*>(\d+)',
-    re.IGNORECASE
-)
-RE_PODIUMS = re.compile(
-    r'World Championship career</th></tr>.*?Podiums.*?<td[^>]*>(\d+)',
-    re.IGNORECASE
-)
-RE_POLES = re.compile(
-    r'World Championship career</th></tr>.*?Pole Positions.*?<td[^>]*>(\d+)',
+# RE-7 to RE-11: All stats follow the same anchor pattern:
+# "World Championship career" → find the stat row → capture digits
+RE_TITLES  = re.compile(r'World Championship career</th></tr>.*?Championships.*?<td[^>]*>(\d+)', re.IGNORECASE)
+RE_WINS    = re.compile(r'World Championship career</th></tr>.*?Wins.*?<td[^>]*>(\d+)', re.IGNORECASE)
+RE_NUMBER  = re.compile(r'World Championship career</th></tr>.*?Car number.*?<td[^>]*>(\d+)', re.IGNORECASE)
+RE_PODIUMS = re.compile(r'World Championship career</th></tr>.*?Podiums.*?<td[^>]*>(\d+)', re.IGNORECASE)
+RE_POLES   = re.compile(r'World Championship career</th></tr>.*?Pole Positions.*?<td[^>]*>(\d+)', re.IGNORECASE)
+
+# SKIP: filters out non-driver Wikipedia pages during link collection
+SKIP = re.compile(
+    r'(Wikipedia|Category|File|Template|List_of|Season|Grand_Prix_of|Circuit)',
     re.IGNORECASE
 )
 ```
 
 **Say:**
-> "For career stats, all patterns use the same anchor:
-> 'World Championship career' — then navigate the HTML table
-> to find the specific stat row and capture the digits.
-> This is more reliable than line-by-line matching because
-> Wikipedia's HTML structure is consistent across driver pages."
+> "RE-6 through RE-11 all use the same structural anchor —
+> 'World Championship career' — to find the right section of
+> the infobox table before capturing the stat digit.
+> This is robust because Wikipedia's infobox structure is consistent.
+>
+> The SKIP pattern is also important — it filters out
+> thousands of non-driver links like Category pages,
+> Season articles, and Circuit pages during link collection,
+> leaving only real driver name URLs."
 
 ---
 
-## SLIDE 8 — clean() Function (6:00–6:30)
+## SLIDE 8 — clean() Function + inline re. calls (6:00–6:30)
 
 **Show on screen:**
 ```python
@@ -207,8 +267,8 @@ def clean(text: str) -> str:
     text = re.sub(r'&nbsp;', ' ', text)            # decode &nbsp;
     text = re.sub(r'&#\d+;', '', text)             # numeric entities
     text = re.sub(r'\{\{[^}]*\}\}', '', text)      # {{wiki templates}}
-    text = re.sub(r'\[\[([^\]|]*\|)?([^\]]*)\]\]', r'\2', text)
-    return re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r'\[\[([^\]|]*\|)?([^\]]*)\]\]', r'\2', text)  # unwrap [[links]]
+    return re.sub(r'\s+', ' ', text).strip()       # collapse whitespace
 ```
 
 **Say:**
@@ -250,7 +310,7 @@ def clean(text: str) -> str:
 ┌─────────────────────────────────────────┐
 │           DATA LAYER                     │
 │  scraper.py ──► data/drivers.json        │
-│  11 regex patterns, urllib only          │
+│  12 regex patterns (RE-0 to RE-11)       │
 └──────────────────┬──────────────────────┘
                    │ json.load()
 ┌──────────────────▼──────────────────────┐
@@ -287,8 +347,8 @@ Config:      render.yaml (auto-deploy on git push)
 **Show on screen:**
 ```
 What was achieved:
-   • 130+ F1 drivers scraped from Wikipedia
-   • 11 regular expressions for data extraction
+   • 150+ F1 drivers scraped from Wikipedia
+   • 12 regex patterns (RE-0 to RE-11) for data extraction
    • Zero third-party scraping libraries
    • REST API with filtering
    • Deployed live on Render.com
@@ -303,8 +363,8 @@ Technologies:
 **Say:**
 > "In summary, this project demonstrates how powerful Python's
 > built-in re module is for web scraping without any third-party libraries.
-> The 11 regular expressions handle everything from link discovery
-> to structured data extraction.
+> 12 compiled regex patterns, RE-0 through RE-11, handle everything
+> from link discovery to structured data extraction across 150 F1 driver pages.
 > Thank you for watching — the live link and source code are in the description."
 
 ---
