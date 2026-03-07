@@ -27,24 +27,89 @@ INPUT                    PROCESS                  OUTPUT
 Wikipedia List Pages  →  Python RE scraper    →  drivers.json
 (3 pages)                (12 regex patterns:       (150 drivers)
                           RE-0 through RE-11)
-                      →  Flask web app        →  Live website
-                      →  Vanilla JS filter    →  REST API
+                                │
+                                ▼
+                         Flask web app     →  Live website (SSR)
+                                          →  REST API (/api/drivers)
+                                          →  Driver detail pages
+
+                         Vanilla JS        →  Client-side filter
+                         (no server call)     (hides/shows HTML rows)
 ```
 
 **Say:**
 > "The project has three layers:
-> 1. A scraper that crawls Wikipedia for 150+ F1 drivers
-> 2. A Flask backend that serves the data
-> 3. A frontend with live search and filtering
->
-> The key constraint: NO BeautifulSoup, NO Scrapy —
-> all data extraction is done purely with regular expressions.
-> The scraper defines 12 compiled regex patterns, RE-0 through RE-11,
-> each responsible for extracting a specific piece of driver data."
+> 1. A scraper that crawls Wikipedia for 150+ F1 drivers using 12 regex patterns
+> 2. A Flask backend that server-renders the full HTML page and also exposes a REST API
+> 3. A thin vanilla JS layer that filters the already-loaded rows client-side —
+>    it never calls the REST API. The API exists separately for external consumers
+>    like other apps or scripts that need the data in JSON format."
 
 ---
 
-## SLIDE 3 — Project File Structure (1:30–2:00)
+## SLIDE 3 — Our Crawling Approach (1:30–2:00)
+
+**Show on screen:**
+```
+╔══════════════════════════════════════════════════════════╗
+║              OUR CRAWLING APPROACH                       ║
+╠══════════════════════════════════════════════════════════╣
+║                                                          ║
+║  STEP 1 — Link Collection                                ║
+║  ┌────────────────────────────────────────────┐          ║
+║  │  Scrape "List of Formula One drivers"       │          ║
+║  │  RE_TABLE  → isolate the driver table       │          ║
+║  │  RE_DRIVER_LINK → extract Wikipedia URLs    │          ║
+║  │  Result: up to 150 driver profile URLs      │          ║
+║  └────────────────────────────────────────────┘          ║
+║                         │                                ║
+║                         ▼                                ║
+║  STEP 2 — Profile Data Extraction (× 150)                ║
+║  ┌────────────────────────────────────────────┐          ║
+║  │  Visit each driver's Wikipedia page         │          ║
+║  │  RE-2  → name      RE-3  → DOB              │          ║
+║  │  RE-4  → birthplace RE-5 → nationality      │          ║
+║  │  RE-6  → team      RE-7  → titles           │          ║
+║  │  RE-8  → wins      RE-9  → car number       │          ║
+║  │  RE-10 → podiums   RE-11 → poles            │          ║
+║  └────────────────────────────────────────────┘          ║
+║                         │                                ║
+║                         ▼                                ║
+║  STEP 3 — Fallback Mechanism                             ║
+║  ┌────────────────────────────────────────────┐          ║
+║  │  Some older drivers lack structured stats   │          ║
+║  │  e.g. Fangio, Moss — minimal infobox data   │          ║
+║  │  → Fall back to original list table         │          ║
+║  │  → Fill missing wins/titles/podiums/poles   │          ║
+║  └────────────────────────────────────────────┘          ║
+║                         │                                ║
+║                         ▼                                ║
+║              data/drivers.json  (150 drivers)            ║
+╚══════════════════════════════════════════════════════════╝
+```
+
+**Say:**
+> "Our crawling strategy has three steps.
+>
+> First, link collection — we scrape Wikipedia's master list of
+> Formula One drivers. RE_TABLE isolates the correct table from
+> the page, then RE_DRIVER_LINK extracts up to 150 individual
+> driver Wikipedia URLs.
+>
+> Second, profile extraction — the scraper visits each driver's
+> page individually and applies 10 regex patterns to pull out
+> name, DOB, birthplace, nationality, team, and all career stats.
+>
+> Third, the fallback mechanism — Wikipedia's infobox format
+> is inconsistent, especially for older drivers
+> who may have no structured stats section at all.
+> When a stat is missing from the individual page, the scraper
+> falls back to the original list table to fill the gap,
+> to ensure data completeness across all 150 drivers."
+
+---
+
+## SLIDE 4 — Project File Structure (2:00–2:30)
 
 **Show on screen (open VS Code):**
 ```
@@ -69,7 +134,7 @@ ToC_Crawler/
 
 ---
 
-## SLIDE 4 — RE-0: Table Extraction (2:00–2:30)
+## SLIDE 5 — RE-0: Table Extraction (2:30–3:00)
 
 **Show on screen (scraper.py):**
 ```python
@@ -113,7 +178,7 @@ table = RE_TABLE.search(html).group(1) if RE_TABLE.search(html) else html
 > The `[^"]*` part is important — it allows for extra dynamically
 > added classes like 'jquery-tablesorter' without breaking the match.
 >
-> re.DOTALL is essential here because the table spans hundreds
+> re.DOTALL is essential here because the table spans many
 > of HTML lines, and without it the dot would not match newlines."
 
 ---
@@ -375,15 +440,17 @@ Technologies:
 |-------|-------|------|----------|
 | 1 | Title | 0:00 | 0:30 |
 | 2 | Overview | 0:30 | 1:00 |
-| 3 | File structure | 1:30 | 0:30 |
-| 4 | RE-1 Driver links ⭐ | 2:00 | 1:30 |
-| 5 | RE-2 & RE-3 Name/DOB | 3:30 | 1:00 |
-| 6 | RE-4 & RE-5 Birthplace/Nat | 4:30 | 0:45 |
-| 7 | RE-6 to RE-11 Stats | 5:15 | 0:45 |
-| 8 | clean() function | 6:00 | 0:30 |
-| 9 | Live demo 🎥 | 6:30 | 2:00 |
-| 10 | Architecture | 8:30 | 1:00 |
-| 11 | Conclusion | 9:30 | 0:30 |
+| 3 | Crawling Approach | 1:30 | 0:30 |
+| 4 | File structure | 2:00 | 0:30 |
+| 5 | RE-0 Table extraction | 2:30 | 0:30 |
+| 6 | RE-1 Driver links ⭐ | 3:00 | 1:00 |
+| 7 | RE-2 & RE-3 Name/DOB | 4:00 | 0:45 |
+| 8 | RE-4 & RE-5 Birthplace/Nat | 4:45 | 0:45 |
+| 9 | RE-6 to RE-11 Stats | 5:30 | 0:30 |
+| 10 | clean() function | 6:00 | 0:30 |
+| 11 | Live demo 🎥 | 6:30 | 2:00 |
+| 12 | Architecture | 8:30 | 1:00 |
+| 13 | Conclusion | 9:30 | 0:30 |
 
 ---
 
