@@ -314,9 +314,10 @@ header {
 
 /* ── Table ─────────────────────────────────────────────────── */
 main {
-  max-width: 1500px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 1.5rem 2rem 4rem;
+  overflow-x: hidden;
 }
 
 .table-scroll {
