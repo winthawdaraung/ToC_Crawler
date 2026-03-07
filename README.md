@@ -3,7 +3,10 @@
 **TOC Assignment** — Web crawler for up to 150 Formula 1 drivers, extracting data from
 Wikipedia using Python's `re` module, displayed in a Flask web application.
 
-> **Live Demo:** [https://toc-crawler.onrender.com/](https://https://toc-crawler.onrender.com/toc-crawler.onrender.com/)  
+> *This assignment is a part of Theory of Computation (Computer Engineering International, King Mongkut's Institute of Technology, Ladkrabang).*  
+> *Instructor: Assoc. Prof. Dr. Kietikul Jieranaithanakit*
+
+> **Live Demo:** [https://toc-crawler.onrender.com/](https://toc-crawler.onrender.com/)  
 > GitHub link is displayed in the header and footer of the web application.
 
 ---
