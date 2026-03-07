@@ -1,13 +1,14 @@
-# 🏎️ F1 Driver Crawler
+# F1 Driver Crawler
 
-**TOC Assignment** — Web crawler for 130+ Formula 1 drivers, extracting data from
+**TOC Assignment** — Web crawler for up to 150 Formula 1 drivers, extracting data from
 Wikipedia using Python's `re` module, displayed in a Flask web application.
 
+> **Live Demo:** [https://toc-crawler.onrender.com/](https://https://toc-crawler.onrender.com/toc-crawler.onrender.com/)  
 > GitHub link is displayed in the header and footer of the web application.
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 f1-crawler/
@@ -28,25 +29,53 @@ f1-crawler/
 
 ---
 
-## 🔴 Regular Expressions (11 patterns — all in scraper.py)
+## Our Crawling Approach
+
+Our scraper uses a targeted, multi-step crawling strategy to ensure data completeness:
+1. **Link Collection:** We first scrape the Wikipedia _"List of Formula One drivers"_ page (`RE_TABLE`, `RE_DRIVER_LINK`) to aggregate a list of individual driver Wikipedia profile URLs.
+2. **Profile Data Extraction:** The crawler visits each individual driver's page, isolating the "Infobox" and "World Championship career" tables to systematically extract core stats using regex (names, DOB, wins, podiums, poles, etc.).
+3. **Fallback Mechanism:** Because Wikipedia infobox formats vary heavily across older and newer drivers, some individual pages may lack structured statistics. If stats like Wins or Championships are missing from the individual page, our scraper falls back to the original driver list table to safely fill in the missing data gaps.
+
+---
+
+## Regular Expressions (12 patterns — all in scraper.py)
+
+Our core scraping logic avoids traditional HTML parsers (like BeautifulSoup) and strictly uses regular expressions to complete this Theory of Computation assignment. Below is the breakdown of the 12 primary pattern matchers used.
 
 | # | Name | What it extracts |
 |---|------|-----------------|
+| RE-0 | `RE_TABLE` | Extract table from list / championship pages |
 | RE-1 | `RE_DRIVER_LINK` | Driver `/wiki/` hrefs from list pages |
 | RE-2 | `RE_PAGE_TITLE` | Full name from `<title>` tag |
 | RE-3 | `RE_DOB` | Date of birth in 2 different formats |
 | RE-4 | `RE_BIRTHPLACE` | City/country of birth |
 | RE-5 | `RE_NATIONALITY` | Driver nationality |
-| RE-6 | `RE_TEAM` | Current F1 team from infobox |
-| RE-7 | `RE_TITLES` | World Championship titles (handles word numbers too) |
-| RE-8 | `RE_STARTS` | Number of race starts |
+| RE-6 | `RE_F1_TEAM` | Current F1 team from infobox |
+| RE-7 | `RE_TITLES` | World Championship titles |
+| RE-8 | `RE_WINS` | Number of F1 race wins |
 | RE-9 | `RE_NUMBER` | Racing car number |
 | RE-10 | `RE_PODIUMS` | Total podium finishes |
 | RE-11 | `RE_POLES` | Total pole positions |
 
+### TOC Regex Feature Breakdown
+
+Our expressions heavily utilize finite automata concepts, combining capturing groups, wildcards, greedy/lazy quantifiers, and character classes:
+
+- **RE-1 (Driver Links):** `href="(/wiki/([A-Z][a-záéíóúàèìòùäëïöüñ\'\-]+(?:_[A-Z][a-záéíóúàèìòùäëïöüñ\'\-]+){1,3}))"`
+  - *TOC Concept:* Enforces deterministic structure matching rules for names, using explicit Unicode character classes to accommodate international characters, and limiting permutations (`{1,3}`) to prevent uncontrolled backtracking.
+- **RE-2 (Page Title):** `<title>\s*([A-ZÀ-Ö][a-zA-ZÀ-ö\'\-\. ]+?)\s*[-–|]`
+  - *TOC Concept:* Uses non-greedy quantifiers (`+?`) to evaluate the shortest valid match up to the delimiter (hyphen, en-dash, or pipe), efficiently extracting the driver's full name.
+- **RE-3 (DOB):** `class="bday">(\d{4}-\d{2}-\d{2})<`
+  - *TOC Concept:* Strict positional formatting using the `\d` metacharacter and exact repetition quantifiers (`{4}`, `{2}`) matching the standard `YYYY-MM-DD` construct. 
+- **RE-6 to RE-11 (Infobox Stats):** e.g., `World Championship career</th></tr>.*?Wins.*?<td[^>]*>(\d+)`
+  - *TOC Concept:* Combines string literals acting as anchors (`Wins`, `Pole Positions`) within the specific infobox section, followed by wildcard stepping (`.*?`) to navigate unpredicted HTML tag attributes until the targeted numerical data `(\d+)` is captured.
+- **Data Sanitization Regex (*app.py*):** 
+  - `[^a-zA-Z0-9\s\'\-]` — A complemented character class used as a finite automaton filter to purge malicious/invalid characters from user search queries.
+
+
 ---
 
-## ▶️ Run Locally
+## Run Locally
 
 ```bash
 # Clone the repo
@@ -56,7 +85,7 @@ cd f1-crawler
 # Install dependencies
 pip install -r requirements.txt
 
-# Step 1: Crawl Wikipedia (~2-3 minutes, scrapes 130+ drivers)
+# Step 1: Crawl Wikipedia (~2-3 minutes, scrapes up to 150 drivers)
 python scraper.py
 
 # Step 2: Start the web app
@@ -64,65 +93,19 @@ python app.py
 # Open: http://127.0.0.1:5000
 ```
 
----
 
-## ☁️ Deployment Guide
+## Features
 
-### Option A — Render.com (Recommended, Free)
-
-1. Push this repo to GitHub.
-2. Go to [render.com](https://render.com) → **New → Web Service**
-3. Connect your GitHub repository.
-4. Fill in:
-   - **Build Command:** `pip install -r requirements.txt && python scraper.py`
-   - **Start Command:** `gunicorn app:app`
-5. Click **Create Web Service**.
-6. Your public URL will appear at the top (e.g. `https://f1-crawler.onrender.com`).
-
-> ⚡ Alternatively, just push the `render.yaml` file and click "Deploy to Render".
-
-### Option B — Railway
-
-```bash
-npm install -g @railway/cli
-railway login
-railway init        # choose "Empty project"
-railway up          # auto-detects Procfile
-```
-
-Railway auto-assigns a public URL.
-
-### Option C — PythonAnywhere (Free tier)
-
-1. Upload all files via the **Files** tab.
-2. Open a Bash console:
-   ```bash
-   pip3.10 install --user flask gunicorn
-   python scraper.py
-   ```
-3. Go to **Web** tab → Add new web app → Manual config → Python 3.10.
-4. Set WSGI file to point to your `app.py`:
-   ```python
-   import sys
-   sys.path.insert(0, '/home/YOUR_USERNAME/f1-crawler')
-   from app import app as application
-   ```
-5. Reload the web app. ✅
-
----
-
-## 📸 Features
-
-- **130+ F1 drivers** scraped from Wikipedia
+- **Up to 150 F1 drivers** scraped from Wikipedia
 - Live **search + filter** by nationality and team
 - Individual **driver detail pages**
-- **11 regex patterns** for data extraction (RE-1 through RE-11)
+- **12 regex patterns** for data extraction (RE-0 through RE-11)
 - REST API at `/api/drivers` and `/api/stats`
 - Responsive F1-themed dark UI
 
 ---
 
-## 🔁 API Endpoints
+## API Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
@@ -134,12 +117,10 @@ Railway auto-assigns a public URL.
 
 ---
 
-## 👥 Team Members
+## Team Members
 
-- Member 1 (Student ID)
-- Member 2 (Student ID)
-- Member 3 (Student ID)
-- Member 4 (Student ID)
-- Member 5 (Student ID)
-
-**Due:** March 4, 2026 before 9 AM
+- Win Thawdar Aung (66011610)
+- Mihini M.W. Boteju (66011666)
+- Phone Min Khant (66011667)
+- Thant Pyae Sone Htun (66011668)
+- Than Thar Min Htet (66011647)
