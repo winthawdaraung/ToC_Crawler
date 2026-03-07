@@ -68,7 +68,7 @@ header {
 }
 
 .header-inner {
-  max-width: 1400px;
+  max-width: 98vw;
   margin: auto;
   height: 100%;
   display: flex;
@@ -176,7 +176,7 @@ header {
 }
 
 .hero-inner {
-  max-width: 1400px;
+  max-width: 98vw;
   margin: auto;
   display: flex;
   align-items: center;
@@ -252,7 +252,7 @@ header {
 }
 
 .filters-inner {
-  max-width: 1400px;
+  max-width: 98vw;
   margin: auto;
   display: flex;
   flex-wrap: wrap;
@@ -314,9 +314,9 @@ header {
 
 /* ── Table ─────────────────────────────────────────────────── */
 main {
-  max-width: 1400px;
+  max-width: 98vw;
   margin: 0 auto;
-  padding: 1.5rem 2rem 4rem;
+  padding: 1.5rem 1rem 4rem;
   overflow-x: hidden;
 }
 
@@ -669,7 +669,7 @@ footer {
 }
 
 .footer-inner {
-  max-width: 1400px;
+  max-width: 98vw;
   margin: auto;
   display: flex;
   align-items: center;
