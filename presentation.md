@@ -8,7 +8,7 @@
 **Show on screen:**
 - Project title: "F1 Driver Database Crawler"
 - Your name + course
-- Live site URL (Render.com link)
+- Live site URL (Railway.app link)
 
 **Say:**
 > "Hi, I'm [name]. Today I'll walk you through my F1 Driver Crawler —
@@ -59,7 +59,7 @@ ToC_Crawler/
 │   ├── css/style.css   ← F1 dark theme
 │   └── js/main.js      ← client-side filter
 ├── requirements.txt
-├── render.yaml         ← deployment config
+├── railway.json        ← deployment config
 └── Procfile
 ```
 
@@ -284,18 +284,18 @@ def clean(text: str) -> str:
 
 **Show on screen (switch to browser):**
 
-1. Open the live Render.com URL
+1. Open the live Railway.app URL: `https://f1driver-web-crawler.up.railway.app`
 2. Show the full driver table loading
 3. Type "hamilton" in search box → show instant JS filtering
 4. Select "British" from nationality dropdown
 5. Select "Mercedes" from team dropdown
 6. Click on Lewis Hamilton → show detail page
 7. Open browser DevTools → Network tab → show no API calls during filter
-8. Open `https://yourapp.render.com/api/drivers?q=verstappen`
-9. Open `https://yourapp.render.com/api/stats`
+8. Open `https://f1driver-web-crawler.up.railway.app/api/drivers?q=verstappen`
+9. Open `https://f1driver-web-crawler.up.railway.app/api/stats`
 
 **Say:**
-> "Here's the live application deployed on Render.com.
+> "Here's the live application deployed on Railway.app.
 > Notice the filtering happens instantly with no page reload —
 > that's the client-side JavaScript reading the data-* attributes
 > that Flask baked into the HTML at render time.
@@ -327,8 +327,8 @@ def clean(text: str) -> str:
 │  filterDrivers() — zero server calls     │
 └─────────────────────────────────────────┘
 
-Deployed on: Render.com
-Config:      render.yaml (auto-deploy on git push)
+Deployed on: Railway.app
+Config:      railway.json (auto-deploy on git push)
 ```
 
 **Say:**
@@ -337,7 +337,7 @@ Config:      render.yaml (auto-deploy on git push)
 > Flask reads that JSON and serves it through 4 routes.
 > The frontend filters client-side using data attributes — 
 > no extra server round trips needed.
-> The whole thing deploys automatically via render.yaml
+> The whole thing deploys automatically via railway.json
 > whenever I push to GitHub."
 
 ---
@@ -351,13 +351,13 @@ What was achieved:
    • 12 regex patterns (RE-0 to RE-11) for data extraction
    • Zero third-party scraping libraries
    • REST API with filtering
-   • Deployed live on Render.com
+   • Deployed live on Railway.app
 
 Technologies:
    • Python stdlib only (urllib + re + json)
    • Flask + Jinja2
    • Vanilla JavaScript
-   • Gunicorn + Render.com
+   • Gunicorn + Railway.app
 ```
 
 **Say:**
@@ -389,7 +389,7 @@ Technologies:
 
 ## Before Recording Checklist
 
-- [ ] App is live on Render.com and loading correctly
+- [ ] App is live on Railway.app and loading correctly
 - [ ] `data/drivers.json` has 100+ drivers
 - [ ] Browser zoom set to 125% so code is readable
 - [ ] VS Code font size increased (Ctrl+= )
