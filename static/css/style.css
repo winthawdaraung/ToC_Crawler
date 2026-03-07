@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    F1 Driver Database  ·  stylesheet
-   Aesthetic: F1 race-day — carbon black, Ferrari red, speed lines
+   Aesthetic: F1 race-day, carbon black, Ferrari red, speed lines
    Fonts: Bebas Neue (display) + Barlow Condensed (UI) + Barlow (body)
 ═══════════════════════════════════════════════════════════════ */
 
@@ -314,7 +314,7 @@ header {
 
 /* ── Table ─────────────────────────────────────────────────── */
 main {
-  max-width: 1400px;
+  max-width: 1500px;
   margin: 0 auto;
   padding: 1.5rem 2rem 4rem;
 }
